@@ -5,9 +5,9 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Holistic"
         mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800" WindowStartupLocation="CenterScreen" ResizeMode="NoResize">
+        Title="全人醫療管理工具" Height="237.879" Width="465.152" WindowStartupLocation="CenterScreen" ResizeMode="NoResize" FontSize="16">
     <Grid>
-        <Button x:Name="Btn_Cal" Content="Button" HorizontalAlignment="Left" Margin="70,55,0,0" VerticalAlignment="Top" Width="75" Click="Btn_Cal_Click"/>
+        <Button x:Name="Btn_Cal" Content="獎勵金計算" HorizontalAlignment="Left" Margin="38,27,0,0" VerticalAlignment="Top" Width="99" Click="Btn_Cal_Click" Height="35"/>
 
     </Grid>
 </Window>
