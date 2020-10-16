@@ -82,6 +82,12 @@ namespace Holistic
         public Dictionary<int, int> PID = new Dictionary<int, int>();
         private void Btn_Cal_Click(object sender, RoutedEventArgs e)
         {
+            StationDatas.Clear();
+            PersonDatas.Clear();
+            MultiCount.Clear();
+            PID.Clear();
+            PI_Count = 0;
+            TotalCount = 0;
             string fname;
             Microsoft.Win32.OpenFileDialog dlg = new Microsoft.Win32.OpenFileDialog
             {
