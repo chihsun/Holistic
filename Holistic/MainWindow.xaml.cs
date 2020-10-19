@@ -88,6 +88,7 @@ namespace Holistic
             PID.Clear();
             PI_Count = 0;
             TotalCount = 0;
+
             string fname;
             Microsoft.Win32.OpenFileDialog dlg = new Microsoft.Win32.OpenFileDialog
             {
@@ -206,8 +207,10 @@ namespace Holistic
                         {
                             sl.SetCellValue(3 + i, 4, PI_Count);
                             sl.SetCellValue(3 + i, 5, PI_Count * 100);
+                            sl.SetCellValue(3 + i, 9, Convert.ToInt32(x.Value) * 200 + PI_Count * 100);
                         }
-                        sl.SetCellValue(3 + i, 9, Convert.ToInt32(x.Value) * 200 + PI_Count * 100);
+                        else
+                            sl.SetCellValue(3 + i, 9, Convert.ToInt32(x.Value) * 200);
                         i++;
                     }
                     sl.AddWorksheet("記錄獎勵金表");
