@@ -61,6 +61,7 @@ namespace Holistic
                 RecordID = new List<string>();
             }
             public int Multi { get; set; }
+            public string PublicStation { get; set; }
         }
         public Dictionary<string, int> StationDatas = new Dictionary<string, int>();
         public List<Person> PersonDatas = new List<Person>();
@@ -80,6 +81,10 @@ namespace Holistic
         /// 個案ID及計數(重覆)
         /// </summary>
         public Dictionary<int, int> PID = new Dictionary<int, int>();
+        /// <summary>
+        /// 公基金領取人
+        /// </summary>
+        public List<Person> Pub_Persons = new List<Person>();
         private void Btn_Cal_Click(object sender, RoutedEventArgs e)
         {
             StationDatas.Clear();
@@ -88,7 +93,11 @@ namespace Holistic
             PID.Clear();
             PI_Count = 0;
             TotalCount = 0;
-
+            if (Pub_Persons.Count == 0)
+            {
+                MessageBox.Show("請先讀取公基金名單");
+                return;
+            }
             string fname;
             Microsoft.Win32.OpenFileDialog dlg = new Microsoft.Win32.OpenFileDialog
             {
@@ -193,7 +202,7 @@ namespace Holistic
                     sl.SetCellValue(2, 3, "獎勵金");
                     sl.SetCellValue(2, 4, "NP公款件數");
                     sl.SetCellValue(2, 5, "NP公款獎勵金");
-                    sl.SetCellValue(2, 7, "代領人代號");
+                    sl.SetCellValue(2, 7, "代領人員編");
                     sl.SetCellValue(2, 8, "代領人名稱");
                     sl.SetCellValue(2, 9, "總金額");
                     var sort = (from obj in StationDatas orderby obj.Key ascending select obj).ToDictionary(o => o.Key, o => o.Value);
@@ -202,6 +211,12 @@ namespace Holistic
                     {
                         sl.SetCellValue(3 + i, 1, x.Key);
                         sl.SetCellValue(3 + i, 2, x.Value);
+                        var pub_nurse = Pub_Persons.FirstOrDefault(o => o.PublicStation == x.Key);
+                        if (pub_nurse != null)
+                        {
+                            sl.SetCellValue(3 + i, 7, pub_nurse.ID);
+                            sl.SetCellValue(3 + i, 8, pub_nurse.Name);
+                        }
                         sl.SetCellValue(3 + i, 3, Convert.ToInt32(x.Value) * 200);
                         if (x.Key == "PI")
                         {
@@ -227,13 +242,58 @@ namespace Holistic
                     sl.SetCellValue(2, 7, "金額 (150 or 180)");
                     sl.SetCellValue(2, 8, "職類記錄件數");
                     sl.SetCellValue(2, 9, "金額 (50)");
-                    sl.SetCellValue(2, 10, "總金額");
-                    sl.SetCellValue(2, 11, "備註");
+                    sl.SetCellValue(2, 10, "公基金");
+                    sl.SetCellValue(2, 11, "總金額");
+                    sl.SetCellValue(2, 12, "備註");
                     List<Person> personcount = new List<Person>();
                     foreach (var x in PersonDatas)
                     {
                         var data = personcount.FirstOrDefault(o => o.ID == x.ID);
-                        if (data != null)
+                        if (data == null)
+                        {
+                            personcount.Add(new Person() { ID = x.ID, Name = x.Name, ProName = x.ProName });
+                            data = personcount.FirstOrDefault(o => o.ID == x.ID);
+                        }
+                        if (x.OpenCase == 1)
+                        {
+                            data.OpenCount++;
+                            if (x.Multi >= 3)
+                                data.MultiOpen++;
+                        }
+                        else if (x.OpenCase == 2)
+                        {
+                            data.RecordCount++;
+                            if (x.Multi >= 3)
+                                data.MultiRecord++;
+                        }
+                        else if (x.YesRecord)
+                            data.OtherCount++;
+                    }
+                    //修正若公基金領取人不在開案、記錄名單中
+                    foreach (var x in Pub_Persons)
+                    {
+                        var pnurse = personcount.FirstOrDefault(o => o.ID == x.ID);
+                        if (pnurse == null)
+                        {
+                            personcount.Add(new Person() { ID = x.ID, Name = x.Name, ProName = x.ProName });
+                        }
+                    }
+                    /*
+                    var pnurse = personcount.FirstOrDefault(o => o.ID == NurseI);
+                    if (pnurse == null)
+                    {
+                        personcount.Add(new Person() { ID = NurseI, Name = "公基金領取人", ProName = "公基金代表", PublicNurse = 100 * TotalCount });
+                        if (NurseI == NPI)
+                            personcount.FirstOrDefault(o => o.ID == NurseI).PublicNP = 100 * (TotalCount - PI_Count);
+                    }
+                    var pnp = personcount.FirstOrDefault(o => o.ID == NPI);
+                    if (pnp == null)
+                    {
+                        personcount.Add(new Person() { ID = NPI, Name = "公基金領取人", ProName = "公基金代表", PublicNP = 100 * (TotalCount - PI_Count) });
+                    }
+                    */
+                    /*
+                    if (data != null)
                         {
                             if (x.OpenCase == 1)
                             {
@@ -249,6 +309,10 @@ namespace Holistic
                             }
                             else if (x.YesRecord)
                                 data.OtherCount++;
+                            if (x.ID == NurseI)
+                                data.PublicNurse = 100 * TotalCount;
+                            if (x.ID == NPI)
+                                data.PublicNP = 100 * (TotalCount - PI_Count);
                         }
                         else
                         {
@@ -269,7 +333,7 @@ namespace Holistic
                                 addon.OtherCount++;
                             personcount.Add(addon);
                         }
-                    }
+                    }*/
                     //personcount.Sort((x, y) => { return x.ID.CompareTo(y.ID); });
                     //personcount.Sort((x, y) => { return x.ProName.CompareTo(y.ProName); });
                     var ndata = personcount;
@@ -305,9 +369,41 @@ namespace Holistic
                                     sl.SetCellValue(3 + i, 8, x.OtherCount);
                                     sl.SetCellValue(3 + i, 9, x.OtherCount * 50);
                                 }
-                                sl.SetCellValue(3 + i, 10, x.OpenCount * 50 + x.MultiOpen * 20 + x.RecordCount * 150 + x.MultiRecord * 30 + x.OtherCount * 50);
+                                //公基金
+                                int pub_count = 0;
+                                foreach (var y in Pub_Persons)
+                                {
+                                    if (y.ID == x.ID)
+                                    {
+                                        if (y.PublicStation == "專師")
+                                        {
+                                            pub_count += 100 * (TotalCount - PI_Count);
+                                            sl.SetCellValue(3, 13, x.ID);
+                                            sl.SetCellValue(3, 14, x.Name);
+                                            sl.SetCellValue(3, 15, x.ProName);
+                                        }
+                                        if (y.PublicStation == "護理部")
+                                        {
+                                            pub_count += 100 * TotalCount;
+                                            sl.SetCellValue(6, 13, x.ID);
+                                            sl.SetCellValue(6, 14, x.Name);
+                                            sl.SetCellValue(6, 15, x.ProName);
+                                        }
+                                        if (StationDatas.ContainsKey(y.PublicStation))
+                                        {
+                                            pub_count += StationDatas[y.PublicStation] * 200;
+                                            if (y.PublicStation == "PI")
+                                                pub_count += PI_Count * 100;
+                                        }
+                                    }
+                                }
+                                if (pub_count > 0)
+                                    sl.SetCellValue(3 + i, 10, pub_count);
+                                //總金額
+                                sl.SetCellValue(3 + i, 11, x.OpenCount * 50 + x.MultiOpen * 20 + x.RecordCount * 150 + x.MultiRecord * 30 + x.OtherCount * 50 + pub_count);
+
                                 if ((x.MultiOpen + x.MultiRecord) > 0)
-                                    sl.SetCellValue(3 + i, 11, x.MultiOpen + x.MultiRecord);
+                                    sl.SetCellValue(3 + i, 12, x.MultiOpen + x.MultiRecord);
                                 i++;
 
                                 if (x.ProName.Contains("個管") && x.OtherCount + x.OpenCount + x.RecordCount > 0)
@@ -325,7 +421,7 @@ namespace Holistic
                     sl.SetCellValue(2, 13, "員工代號");
                     sl.SetCellValue(2, 14, "員工名稱");
                     sl.SetCellValue(2, 15, "職稱");
-                    sl.SetCellValue(2, 16, "件數(NP)");
+                    sl.SetCellValue(2, 16, "件數(NP公款)");
                     sl.SetCellValue(2, 17, "總金額 (100)");
                     sl.SetCellValue(3, 16, TotalCount - PI_Count);
                     sl.SetCellValue(3, 17, 100 * (TotalCount - PI_Count));
@@ -394,6 +490,62 @@ namespace Holistic
                     */
                     sl.SaveAs(fname);
                     MessageBox.Show("獎勵金計算完成!");
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.ToString());
+            }
+        }
+
+        private void Btn_Pub_Click(object sender, RoutedEventArgs e)
+        {
+            string fname;
+            Microsoft.Win32.OpenFileDialog dlg = new Microsoft.Win32.OpenFileDialog
+            {
+                InitialDirectory = Environment.CurrentDirectory,
+                Title = "選取資料檔",
+                Filter = "xlsx files (*.*)|*.xlsx"
+            };
+            if (dlg.ShowDialog() == true)
+            {
+                fname = dlg.FileName;
+            }
+            else
+                return;
+
+            if (!System.IO.File.Exists(fname))
+                return;
+            try
+            {
+                using (SLDocument sl = new SLDocument(fname))
+                {
+                    Pub_Persons = new List<Person>();
+
+                    SLWorksheetStatistics wsstats = sl.GetWorksheetStatistics();
+                    for (int i = 0; i < wsstats.EndRowIndex; i++)
+                    {
+                        if (string.IsNullOrEmpty(sl.GetCellValueAsString(i + 2, 1)))
+                            break;
+                        string station = sl.GetCellValueAsString(i + 2, 1);
+                        if (!int.TryParse(sl.GetCellValueAsString(i + 2, 2), out int pid))
+                            break;
+                        string pname = sl.GetCellValueAsString(i + 2, 3);
+
+                        Pub_Persons.Add(new Person()
+                        {
+                            ID = pid,
+                            Name = pname,
+                            ProName = "公基金代領",
+                            PublicStation = station
+                        });
+                    }
+                    sl.CloseWithoutSaving();
+                }
+                if (Pub_Persons.Count > 0)
+                {
+                    Lb_1.Foreground = new SolidColorBrush(Colors.White);
+                    Lb_1.Content = "已匯入公基金領取名單!!";
                 }
             }
             catch (Exception ex)
