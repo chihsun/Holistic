@@ -62,6 +62,8 @@ namespace Holistic
             }
             public int Multi { get; set; }
             public string PublicStation { get; set; }
+            public bool Hospice { get; set; }
+            public int Hoscount { get; set; }
         }
         public Dictionary<string, int> StationDatas = new Dictionary<string, int>();
         public List<Person> PersonDatas = new List<Person>();
@@ -172,6 +174,7 @@ namespace Holistic
                             Name = sl.GetCellValueAsString(i + 2, 21),
                             ProName = sl.GetCellValueAsString(i + 2, 23),
                             OpenCase = 2,
+                            Hospice = sl.GetCellValueAsString(i + 2, wsstats.EndColumnIndex) == "Y",
                             Multi = multp
                         });
                         MultiCount.Add(multp);
@@ -190,7 +193,7 @@ namespace Holistic
                 {
                     Directory.CreateDirectory(fpath);
                 }
-                fname = fpath + @"\全人" + DateTime.Now.ToString("yyyy-MM")+ ".xlsx";
+                fname = fpath + @"\全人" + DateTime.Now.ToString("yyyy-MM") + ".xlsx";
                 using (SLDocument sl = new SLDocument())
                 {
                     sl.RenameWorksheet("Sheet1", "病房獎勵金表");
@@ -204,7 +207,7 @@ namespace Holistic
                     sl.SetCellValue(2, 5, "NP公款獎勵金");
                     sl.SetCellValue(2, 7, "代領人員編");
                     sl.SetCellValue(2, 8, "代領人名稱");
-                    sl.SetCellValue(2, 9, "總金額");
+                    sl.SetCellValue(2, 9, "原始總金額");
                     var sort = (from obj in StationDatas orderby obj.Key ascending select obj).ToDictionary(o => o.Key, o => o.Value);
                     int i = 0;
                     foreach (var x in sort)
@@ -228,6 +231,30 @@ namespace Holistic
                             sl.SetCellValue(3 + i, 9, Convert.ToInt32(x.Value) * 200);
                         i++;
                     }
+                    ///NP公基金
+                    sl.SetCellValue(3 + i + 1, 1, "專師");
+                    sl.SetCellValue(3 + i + 1, 4, TotalCount - PI_Count);
+                    sl.SetCellValue(3 + i + 1, 5, 100 * (TotalCount - PI_Count));
+                    sl.SetCellValue(3 + i + 1, 9, 100 * (TotalCount - PI_Count));
+                    var np_nurse = Pub_Persons.FirstOrDefault(o => o.PublicStation == "專師");
+                    if (np_nurse != null)
+                    {
+                        sl.SetCellValue(3 + i + 1, 7, np_nurse.ID);
+                        sl.SetCellValue(3 + i + 1, 8, np_nurse.Name);
+                    }
+                    i++;
+                    ///護理部公基金
+                    sl.SetCellValue(3 + i + 1, 1, "護理部");
+                    sl.SetCellValue(3 + i + 1, 4, TotalCount);
+                    sl.SetCellValue(3 + i + 1, 5, 100 * TotalCount);
+                    sl.SetCellValue(3 + i + 1, 9, 100 * TotalCount);
+                    var all_nurse = Pub_Persons.FirstOrDefault(o => o.PublicStation == "護理部");
+                    if (all_nurse != null)
+                    {
+                        sl.SetCellValue(3 + i + 1, 7, all_nurse.ID);
+                        sl.SetCellValue(3 + i + 1, 8, all_nurse.Name);
+                    }
+
                     sl.AddWorksheet("記錄獎勵金表");
                     sl.SelectWorksheet("記錄獎勵金表");
                     for (int z = 0; z < 16; z++)
@@ -242,9 +269,14 @@ namespace Holistic
                     sl.SetCellValue(2, 7, "金額 (150 or 180)");
                     sl.SetCellValue(2, 8, "職類記錄件數");
                     sl.SetCellValue(2, 9, "金額 (50)");
-                    sl.SetCellValue(2, 10, "公基金");
-                    sl.SetCellValue(2, 11, "總金額");
-                    sl.SetCellValue(2, 12, "備註");
+                    sl.SetCellValue(2, 10, "02020緩和醫療");
+                    sl.SetCellValue(2, 11, "金額 (50)");
+                    sl.SetCellValue(2, 12, "護理部公基金");
+                    sl.SetCellValue(2, 13, "原始總金額");
+                    sl.SetCellValue(2, 14, "罰扣件數");
+                    sl.SetCellValue(2, 15, "罰扣金額");
+                    sl.SetCellValue(2, 16, "發放總金額");
+                    sl.SetCellValue(2, 17, "備註(多職類參與)");
                     List<Person> personcount = new List<Person>();
                     foreach (var x in PersonDatas)
                     {
@@ -268,6 +300,9 @@ namespace Holistic
                         }
                         else if (x.YesRecord)
                             data.OtherCount++;
+                        ///安寧
+                        if (x.Hospice)
+                            data.Hoscount++;
                     }
                     //修正若公基金領取人不在開案、記錄名單中
                     foreach (var x in Pub_Persons)
@@ -342,6 +377,9 @@ namespace Holistic
                     //var pdata = personcount.GroupBy(o => o.ProName).ToDictionary(o => o.Key, o => o.ToList<Person>());
                     i = 0;
                     int j = 8;
+                    ///全部完成紀錄數
+                    int totalMultiCount = 0;
+                    int totalHosCount = 0;
                     foreach (var o in pdata)
                     {
                         //o.Value.Sort((x, y) => { return x.ID.CompareTo(y.ID); });
@@ -368,9 +406,18 @@ namespace Holistic
                                 {
                                     sl.SetCellValue(3 + i, 8, x.OtherCount);
                                     sl.SetCellValue(3 + i, 9, x.OtherCount * 50);
+                                    totalMultiCount += x.OtherCount;
                                 }
+                                if (x.Hoscount > 0)
+                                {
+                                    sl.SetCellValue(3 + i, 10, x.Hoscount);
+                                    sl.SetCellValue(3 + i, 11, x.Hoscount * 50);
+                                    totalHosCount += x.Hoscount;
+                                }
+
                                 //公基金
                                 int pub_count = 0;
+                                bool np = false;
                                 foreach (var y in Pub_Persons)
                                 {
                                     if (y.ID == x.ID)
@@ -378,18 +425,19 @@ namespace Holistic
                                         if (y.PublicStation == "專師")
                                         {
                                             pub_count += 100 * (TotalCount - PI_Count);
-                                            sl.SetCellValue(3, 13, x.ID);
-                                            sl.SetCellValue(3, 14, x.Name);
-                                            sl.SetCellValue(3, 15, x.ProName);
+                                            sl.SetCellValue(3, 20, x.ID);
+                                            sl.SetCellValue(3, 21, x.Name);
+                                            sl.SetCellValue(3, 22, x.ProName);
+                                            np = true;
                                         }
-                                        if (y.PublicStation == "護理部")
+                                        else if (y.PublicStation == "護理部")
                                         {
                                             pub_count += 100 * TotalCount;
-                                            sl.SetCellValue(6, 13, x.ID);
-                                            sl.SetCellValue(6, 14, x.Name);
-                                            sl.SetCellValue(6, 15, x.ProName);
+                                            sl.SetCellValue(7, 20, x.ID);
+                                            sl.SetCellValue(7, 21, x.Name);
+                                            sl.SetCellValue(7, 22, x.ProName);
                                         }
-                                        if (StationDatas.ContainsKey(y.PublicStation))
+                                        else if (StationDatas.ContainsKey(y.PublicStation))
                                         {
                                             pub_count += StationDatas[y.PublicStation] * 200;
                                             if (y.PublicStation == "PI")
@@ -398,14 +446,30 @@ namespace Holistic
                                     }
                                 }
                                 if (pub_count > 0)
-                                    sl.SetCellValue(3 + i, 10, pub_count);
-                                //總金額
-                                sl.SetCellValue(3 + i, 11, x.OpenCount * 50 + x.MultiOpen * 20 + x.RecordCount * 150 + x.MultiRecord * 30 + x.OtherCount * 50 + pub_count);
+                                {
+                                    if (np)
+                                    {
+                                        sl.SetCellValue(3 + i, 12, "=X3");
+                                    }
+                                    else
+                                    {
+                                        sl.SetCellValue(3 + i, 12, pub_count);
+                                    }
+                                }
+                                //原始總金額
+                                if (np)
+                                    sl.SetCellValue(3 + i, 13, $"=E{3 + i} + G{3 + i} + I{3 + i} + K{3 + i} + L{3 + i}");
+                                else
+                                    sl.SetCellValue(3 + i, 13, x.OpenCount * 50 + x.MultiOpen * 20 + x.RecordCount * 150 + x.MultiRecord * 30 + x.OtherCount * 50 + x.Hoscount * 50 + pub_count);
+                                //sl.SetCellValue(3 + i, 13, $"=E{3 + i} + G{3 + i} + I{3 + i} + K{3 + i} + L{3 + i}");
+                                //發放總金額
+                                sl.SetCellValue(3 + i, 16, $"=M{3 + i} - O{3 + i}");
 
                                 if ((x.MultiOpen + x.MultiRecord) > 0)
-                                    sl.SetCellValue(3 + i, 12, x.MultiOpen + x.MultiRecord);
-                                i++;
-
+                                    sl.SetCellValue(3 + i, 17, x.MultiOpen + x.MultiRecord);
+                                if (sl.GetCellValueAsInt32(3 + i, 13) != 0 || np)
+                                    i++;
+                                /*
                                 if (x.ProName.Contains("個管") && x.OtherCount + x.OpenCount + x.RecordCount > 0)
                                 {
                                     sl.SetCellValue(j, 13, x.ID);
@@ -414,25 +478,59 @@ namespace Holistic
                                     sl.SetCellValue(j, 16, x.OtherCount + x.OpenCount + x.RecordCount);
                                     j++;
                                 }
+                                */
                             }
                             );
                         }
                     }
-                    sl.SetCellValue(2, 13, "員工代號");
-                    sl.SetCellValue(2, 14, "員工名稱");
-                    sl.SetCellValue(2, 15, "職稱");
-                    sl.SetCellValue(2, 16, "件數(NP公款)");
-                    sl.SetCellValue(2, 17, "總金額 (100)");
-                    sl.SetCellValue(3, 16, TotalCount - PI_Count);
-                    sl.SetCellValue(3, 17, 100 * (TotalCount - PI_Count));
+                    SLWorksheetStatistics wsstats = sl.GetWorksheetStatistics();
 
-                    sl.SetCellValue(5, 13, "員工代號");
-                    sl.SetCellValue(5, 14, "員工名稱");
-                    sl.SetCellValue(5, 15, "職稱");
-                    sl.SetCellValue(5, 16, "件數(護理部公款)");
-                    sl.SetCellValue(5, 17, "總金額 (100)");
-                    sl.SetCellValue(6, 16, TotalCount);
-                    sl.SetCellValue(6, 17, 100 * TotalCount);
+                    sl.SetCellValue(2, 20, "員工代號");
+                    sl.SetCellValue(2, 21, "員工名稱");
+                    sl.SetCellValue(2, 22, "職稱");
+                    sl.SetCellValue(2, 23, "件數(NP公基金)");
+                    sl.SetCellValue(2, 24, "總金額 (100)");
+                    sl.SetCellValue(3, 23, $"={TotalCount - PI_Count} + W4");
+                    sl.SetCellValue(3, 24, $"={100 * (TotalCount - PI_Count)} + X4");
+                    sl.SetCellValue(4, 23, "=SUM(N3:N100)");
+                    sl.SetCellValue(4, 24, "=SUM(O3:O100)");
+
+                    sl.SetCellValue(6, 20, "員工代號");
+                    sl.SetCellValue(6, 21, "員工名稱");
+                    sl.SetCellValue(6, 22, "職稱");
+                    sl.SetCellValue(6, 23, "件數(護理部公基金)");
+                    sl.SetCellValue(6, 24, "總金額 (100)");
+                    sl.SetCellValue(7, 23, TotalCount);
+                    sl.SetCellValue(7, 24, 100 * TotalCount);
+
+                    sl.SetCellValue(10, 20, "獎勵項目");
+                    sl.SetCellValue(10, 23, "件數");
+                    sl.SetCellValue(10, 24, "總金額");
+                    sl.SetCellValue(11, 20, "護理站協助獎勵金");
+                    sl.SetCellValue(12, 20, "紀錄完成者者獎勵金");
+                    sl.SetCellValue(13, 20, "專師公基金");
+                    sl.SetCellValue(14, 20, "護理部公基金");
+                    sl.SetCellValue(15, 20, "開案獎勵金");
+                    sl.SetCellValue(16, 20, "職類紀錄獎勵金");
+                    sl.SetCellValue(17, 20, "安寧緩和獎勵金");
+                    sl.SetCellValue(18, 20, "總計");
+                    
+                    sl.SetCellValue(11, 23, TotalCount);
+                    sl.SetCellValue(11, 24, 200 * TotalCount + 100 * PI_Count);
+                    sl.SetCellValue(12, 23, "=W11-W4");
+                    sl.SetCellValue(12, 24, $"=SUM(G3:G{wsstats.EndRowIndex - 1}) - X4");
+                    sl.SetCellValue(13, 23, "=W3");
+                    sl.SetCellValue(13, 24, "=X3");
+                    sl.SetCellValue(14, 23, TotalCount);
+                    sl.SetCellValue(14, 24, 100 * TotalCount);
+                    sl.SetCellValue(15, 23, TotalCount);
+                    sl.SetCellValue(15, 24, $"=SUM(E3:E{wsstats.EndRowIndex - 1})");
+                    sl.SetCellValue(16, 23, totalMultiCount);
+                    sl.SetCellValue(16, 24, 50 * totalMultiCount);
+                    sl.SetCellValue(17, 23, totalHosCount);
+                    sl.SetCellValue(17, 24, 50 * totalHosCount);
+                    sl.SetCellValue(18, 24, "=SUM(X11:X17)");
+
                     /*
                     Dictionary<string, List<Person>> pdatas = new Dictionary<string, List<Person>>();
 
