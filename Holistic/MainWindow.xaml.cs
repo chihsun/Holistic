@@ -141,10 +141,11 @@ namespace Holistic
                             PI_Count++;
                         ///其他職類
                         int multp = 1;
-                        for (int j = 0; j < 15; j++)
+                        for (int j = 0; j < 20; j++)
                         {
+                            if (sl.GetCellValueAsString(i + 2, 24 + (j * 3)).Contains("會議記錄完成"))
+                                break;
                             if (!string.IsNullOrEmpty(sl.GetCellValueAsString(i + 2, 24 + (j * 3)))
-                                && !sl.GetCellValueAsString(i + 2, 24 + (j * 3)).Contains("會議記錄完成")
                                 && Int32.TryParse(sl.GetCellValueAsString(i + 2, 24 + (j * 3)), out int id))
                             {
                                 PersonDatas.Add(new Person()
@@ -163,7 +164,7 @@ namespace Holistic
                         {
                             ID = sl.GetCellValueAsInt32(i + 2, 15),
                             Name = sl.GetCellValueAsString(i + 2, 16),
-                            ProName = "護理長",
+                            ProName = "開案者",
                             OpenCase = 1,
                             Multi = multp
                         });
@@ -174,7 +175,7 @@ namespace Holistic
                             Name = sl.GetCellValueAsString(i + 2, 21),
                             ProName = sl.GetCellValueAsString(i + 2, 23),
                             OpenCase = 2,
-                            Hospice = sl.GetCellValueAsString(i + 2, wsstats.EndColumnIndex) == "Y",
+                            Hospice = sl.GetCellValueAsString(i + 2, 135) == "Y" && sl.GetCellValueAsString(i + 2, 13) == "L",
                             Multi = multp
                         });
                         MultiCount.Add(multp);
