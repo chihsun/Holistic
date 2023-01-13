@@ -175,7 +175,7 @@ namespace Holistic
                             Name = sl.GetCellValueAsString(i + 2, 21),
                             ProName = sl.GetCellValueAsString(i + 2, 23),
                             OpenCase = 2,
-                            Hospice = sl.GetCellValueAsString(i + 2, 135) == "Y" && sl.GetCellValueAsString(i + 2, 13) == "L",
+                            Hospice = sl.GetCellValueAsString(i + 2, wsstats.EndColumnIndex - 1) == "Y" && sl.GetCellValueAsString(i + 2, 13) == "L",
                             Multi = multp
                         });
                         MultiCount.Add(multp);
