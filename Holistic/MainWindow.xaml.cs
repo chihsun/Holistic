@@ -52,18 +52,26 @@ namespace Holistic
             {
                 get
                 {
-                    return RecordID.Count > 0;
+                    return RecordID != "-1";
                 }
             }
-            public List<string> RecordID { get; set; }
+            public bool NoRecord
+            {
+                get
+                {
+                    return RecordID == "-1";
+                }
+            }
+            public string RecordID { get; set; }
             public Person()
             {
-                RecordID = new List<string>();
+               
             }
             public int Multi { get; set; }
             public string PublicStation { get; set; }
             public bool Hospice { get; set; }
             public int Hoscount { get; set; }
+            public int Misscount { get; set; }
         }
         public Dictionary<string, int> StationDatas = new Dictionary<string, int>();
         public List<Person> PersonDatas = new List<Person>();
@@ -139,9 +147,9 @@ namespace Holistic
                         }
                         if (station == "PI")
                             PI_Count++;
-                        ///其他職類
+                        ///記錄
                         int multp = 1;
-                        for (int j = 0; j < 20; j++)
+                        for (int j = 0; j < 30; j++)
                         {
                             if (sl.GetCellValueAsString(i + 2, 24 + (j * 3)).Contains("會議記錄完成"))
                                 break;
@@ -153,8 +161,7 @@ namespace Holistic
                                     ID = sl.GetCellValueAsInt32(i + 2, 24 + (j * 3)),
                                     Name = sl.GetCellValueAsString(i + 2, 25 + (j * 3)),
                                     ProName = sl.GetCellValueAsString(1, 25 + (j * 3)),
-                                    RecordID = sl.GetCellValueAsString(i + 2, 26 + (j * 3)) == "Y" ?
-                                    new List<string>() { pid } : new List<string>()
+                                    RecordID = sl.GetCellValueAsString(i + 2, 26 + (j * 3)) == "Y" ? pid : "-1"
                                 });
                                 multp++;
                             }
@@ -278,6 +285,7 @@ namespace Holistic
                     sl.SetCellValue(2, 15, "罰扣金額");
                     sl.SetCellValue(2, 16, "發放總金額");
                     sl.SetCellValue(2, 17, "備註(多職類參與)");
+                    sl.SetCellValue(2, 18, "備註(未完報告數)");
                     List<Person> personcount = new List<Person>();
                     foreach (var x in PersonDatas)
                     {
@@ -301,6 +309,8 @@ namespace Holistic
                         }
                         else if (x.YesRecord)
                             data.OtherCount++;
+                        else if (x.NoRecord)
+                            data.Misscount++;
                         ///安寧
                         if (x.Hospice)
                             data.Hoscount++;
@@ -468,6 +478,8 @@ namespace Holistic
 
                                 if ((x.MultiOpen + x.MultiRecord) > 0)
                                     sl.SetCellValue(3 + i, 17, x.MultiOpen + x.MultiRecord);
+                                if (x.Misscount > 0)
+                                    sl.SetCellValue(3 + i, 18, x.Misscount);
                                 if (sl.GetCellValueAsInt32(3 + i, 13) != 0 || np)
                                     i++;
                                 /*
